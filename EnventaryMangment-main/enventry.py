@@ -23,6 +23,12 @@ DB_CONFIG = {
     "password": "testStudents@123",
     "database": "u263681140_students",
 }
+DB_CONFIG = {
+    "host": "82.180.143.66",
+    "user": "u263681140_students",
+    "password": "testStudents@123",
+    "database": "u263681140_students",
+}
 
 
 # Default login credentials
@@ -98,21 +104,6 @@ def edit_product(product_id, product_name, lot_number, manufacture_date, expiry_
         finally:
             conn.close()
 
-# Delete Product
-def delete_product(product_id):
-    conn = connect_db()
-    if conn:
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("DELETE FROM Enventry WHERE id = %s", (product_id,))
-            conn.commit()
-            st.success("Product deleted successfully!")
-        except mysql.connector.Error as e:
-            st.error(f"Error deleting data: {e}")
-        finally:
-            conn.close()
-
 # Display Products with Edit and Delete Buttons
 def display_products():
     st.title("All Registered Products")
@@ -122,11 +113,13 @@ def display_products():
     if products:
         # Prepare data for table
         table_data = []
+        editable_product_id = st.session_state.get("editable_product_id", None)
+
         for product in products:
             product_name = product.get("ProductName", "N/A")
             lot_number = product.get("LotNumber", "N/A")
-            manufacture_date = product.get("Mfg", "N/A")  # Adjust key if different
-            expiry_date = product.get("Expire", "N/A")  # Adjust key if different
+            manufacture_date = product.get("Mfg", "N/A")
+            expiry_date = product.get("Expire", "N/A")
 
             # Create a downloadable link for QR Code
             qr_code_data = product.get("QRCode")
@@ -137,8 +130,8 @@ def display_products():
                 href = "No QR Code"
 
             # Edit and Delete buttons
-            edit_button = f'<a href="?edit={product["id"]}">Edit</a>'
-            delete_button = f'<a href="?delete={product["id"]}" style="color:red;">Delete</a>'
+            edit_button = f'<button onClick="window.location.href=\'#edit_{product["id"]}\'">Edit</button>'
+            delete_button = f'<button style="color:red;" onClick="window.location.href=\'#delete_{product["id"]}\'">Delete</button>'
 
             # Append product details with buttons
             table_data.append([product_name, lot_number, manufacture_date, expiry_date, href, edit_button, delete_button])
@@ -149,33 +142,30 @@ def display_products():
         # Display table with HTML rendering for download links
         st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
+        # Handling the form for editing a product
+        if editable_product_id:
+            editable_product = next(prod for prod in products if prod["id"] == editable_product_id)
+
+            # Editable form for the selected product
+            with st.form(key="edit_form"):
+                product_name = st.text_input("Product Name", editable_product["ProductName"])
+                lot_number = st.text_input("Lot Number", editable_product["LotNumber"])
+                manufacture_date = st.date_input("Manufacture Date", datetime.datetime.strptime(editable_product["Mfg"], "%Y-%m-%d").date())
+                expiry_date = st.date_input("Expiry Date", datetime.datetime.strptime(editable_product["Expire"], "%Y-%m-%d").date())
+
+                if st.form_submit_button("Save Changes"):
+                    edit_product(editable_product["id"], product_name, lot_number, manufacture_date, expiry_date)
+                    st.session_state.editable_product_id = None  # Reset editable product id
+                    st.experimental_rerun()
+
     else:
         st.warning("No products found in the database.")
 
-    # Handling Edit and Delete Logic via URL Parameters
-    if "edit" in st.experimental_get_query_params():
+    # Check if a product needs to be edited or deleted (based on URL hash)
+    if st.experimental_get_query_params().get("edit"):
         product_id = int(st.experimental_get_query_params()["edit"][0])
-        product = next((prod for prod in products if prod["id"] == product_id), None)
-
-        if product:
-            st.subheader("Edit Product")
-            product_name = st.text_input("Product Name", product["ProductName"])
-            lot_number = st.text_input("Lot Number", product["LotNumber"])
-            manufacture_date = st.date_input("Manufacture Date", datetime.datetime.strptime(product["Mfg"], "%Y-%m-%d").date())
-            expiry_date = st.date_input("Expiry Date", datetime.datetime.strptime(product["Expire"], "%Y-%m-%d").date())
-
-            if st.button("Save Changes"):
-                edit_product(product_id, product_name, lot_number, manufacture_date, expiry_date)
-                st.session_state.view_products = True  # Redirect to the products view
-                st.rerun()
-
-    # Handle Delete action
-    if "delete" in st.experimental_get_query_params():
-        product_id = int(st.experimental_get_query_params()["delete"][0])
-        if st.button(f"Are you sure you want to delete product ID {product_id}?"):
-            delete_product(product_id)
-            st.session_state.view_products = True  # Redirect to the products view
-            st.rerun()
+        st.session_state["editable_product_id"] = product_id
+        st.experimental_rerun()
 
 # App Flow
 if not st.session_state.logged_in:
