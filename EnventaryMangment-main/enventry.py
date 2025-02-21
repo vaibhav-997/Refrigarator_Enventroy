@@ -18,11 +18,18 @@ if "regester" not in st.session_state:
 
 # MySQL Database Connection
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "your_user",
-    "password": "your_password",
-    "database": "your_database_name"
+    "host": "82.180.143.66",
+    "user": "u263681140_students",
+    "password": "testStudents@123",
+    "database": "u263681140_students",
 }
+DB_CONFIG = {
+    "host": "82.180.143.66",
+    "user": "u263681140_students",
+    "password": "testStudents@123",
+    "database": "u263681140_students",
+}
+
 
 # Default login credentials
 USERNAME = "admin"
